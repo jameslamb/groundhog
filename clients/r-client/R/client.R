@@ -66,28 +66,34 @@ append_slope_features <- function(DT
 
     # Grab a JSON payload for each asset in DT
     assets <- tempDT[, unique(assetId)]
-    log_info(sprintf("Running groundhog for %s assets", length(assets)))
+    log_info(sprintf("Running groundhog for %i assets", length(assets)))
 
     # Submit one request per asset
-    payloads <- lapply(assets
-                       , FUN = function(asset, DT){.GetPayloadJSON(tempDT[assetId == asset])}
-                       , DT = tempDT)
+    payloads <- lapply(
+        assets
+        , FUN = function(asset, DT){
+            .GetPayloadJSON(tempDT[assetId == asset])
+        }
+        , DT = tempDT
+    )
 
     # Submit requests
     assetNumber <- 1
     numAssets <- length(assets)
-    responseList <- lapply(payloads
-                           , FUN = function(payload, hostName, port){
-                               log_info(sprintf("Working on asset %s/%s", assetNumber, numAssets))
-                               assetNumber <<- assetNumber + 1
-                               .GroundhogQuery(
-                                        hostName = hostName
-                                        , port = port
-                                        , payloadJSON = payload
-                                )
-                              }
-                           , hostName = hostName
-                           , port = port)
+    responseList <- lapply(
+        payloads
+        , FUN = function(payload, hostName, port){
+           log_info(sprintf("Working on asset %s/%s", assetNumber, numAssets))
+           assetNumber <<- assetNumber + 1
+           .GroundhogQuery(
+                    hostName = hostName
+                    , port = port
+                    , payloadJSON = payload
+            )
+          }
+       , hostName = hostName
+       , port = port
+    )
 
     # Parse into one data.table
     resultDT <- data.table::rbindlist(
@@ -95,8 +101,11 @@ append_slope_features <- function(DT
         , fill = TRUE
     )
 
-    data.table::setnames(resultDT, old = c("geo_point.lat", "geo_point.lon")
-                         , new = c("latitude", "longitude"))
+    data.table::setnames(
+        resultDT
+        , old = c("geo_point.lat", "geo_point.lon")
+        , new = c("latitude", "longitude")
+    )
 
     # Instead of copying the whole DT (which could be yuge), we can do a join on
     # the relevant fields then do in-place assignments....check this out
@@ -110,9 +119,11 @@ append_slope_features <- function(DT
     data.table::setorderv(joinDT, "unique_key")
 
     # Hopefully nothing broke
-    assertthat::assert_that(nrow(DT) == nrow(joinDT)
-                            , is.null(data.table::key(joinDT))
-                            , identical(joinDT[, unique_key], tempDT[, unique_key]))
+    assertthat::assert_that(
+        nrow(DT) == nrow(joinDT)
+        , is.null(data.table::key(joinDT))
+        , identical(joinDT[, unique_key], tempDT[, unique_key])
+    )
 
     # Add any cols that we got from the API
     # NOTE: ignoring unique_key and stride
@@ -138,11 +149,13 @@ append_slope_features <- function(DT
 #' @importFrom jsonlite fromJSON
 .GroundhogQuery <- function(hostName, port, payloadJSON){
 
-    response <- httr::RETRY(verb = "POST"
-                            , paste0("http://", hostName, ":", port, "/groundhog")
-                            , body = payloadJSON
-                            , httr::add_headers("Content-Type" = "application/json")
-                            , times = 5)
+    response <- httr::RETRY(
+        verb = "POST"
+        , paste0("http://", hostName, ":", port, "/groundhog")
+        , body = payloadJSON
+        , httr::add_headers("Content-Type" = "application/json")
+        , times = 5
+    )
     httr::stop_for_status(response)
 
     responseDT <- data.table::as.data.table(
@@ -164,7 +177,7 @@ append_slope_features <- function(DT
 
 # [description] Format a request payload form a data.table of signal data
 # [param] DT a data.table with your signal data
-#' @importFrom data.table setorderv
+#' @importFrom data.table := setorderv
 #' @importFrom jsonlite toJSON
 .GetPayloadJSON <- function(DT){
 
