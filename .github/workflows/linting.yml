@@ -1,13 +1,13 @@
 name: linting
 
-# only run this workflow on new commits to master
-on:
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master
+# # only run this workflow on new commits to master
+# on:
+#   push:
+#     branches:
+#     - master
+#   pull_request:
+#     branches:
+#     - master
 
 jobs:
   test:
